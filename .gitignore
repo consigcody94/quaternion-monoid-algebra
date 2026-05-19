@@ -7,3 +7,6 @@ venv/
 .DS_Store
 Thumbs.db
 *.npz
+
+# Downloaded datasets (stress_tests.py fetches these at runtime)
+data_cache/
