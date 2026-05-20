@@ -1,5 +1,8 @@
 # Quaternion-Monoid Algebra
 
+[![DOI](https://zenodo.org/badge/1243952950.svg)](https://doi.org/10.5281/zenodo.20301069)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A compositional algebra over fixed-width quaternionic-symbolic state packets. Defines a closed associative binary operation with two-sided identity on a packet space whose elements carry a unit-quaternion rotation plus symbolic metadata plus a scaling factor. Implements the construction on CPU and GPU with bit-exact correspondence between the two implementations.
 
 The result is that a packet space which would otherwise be a passive data container becomes an active algebraic element — composable, chainable, and admitting a single-cycle hardware implementation.
