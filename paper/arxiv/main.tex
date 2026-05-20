@@ -1,0 +1,250 @@
+\documentclass[11pt]{article}
+
+% --- Conservative preamble: only standard, arXiv-safe packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+\usepackage{booktabs}
+\usepackage{array}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+
+\title{Compositional Algebra over Fixed-Width\\
+Quaternionic-Symbolic State Packets}
+\author{Cody Churchwell\\
+\small Independent Researcher\\
+\small \texttt{github.com/consigcody94/quaternion-monoid-algebra}}
+\date{May 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We define a compositional algebra over a fixed-width packet structure that
+carries a unit quaternion, a small number of symbolic metadata fields, and a
+positive scaling factor. A closed binary operation is defined on the packet
+space with the property that the space, equipped with this operation, forms a
+monoid: closure, two-sided identity, and associativity. The construction is
+field-by-field; each sub-field operation is drawn from a small set of
+associative monoid operations on its respective value space (Hamilton
+multiplication on the quaternion factor; lookup-table substitution, lattice
+maximum, modular addition, parity XOR, and multiplicative scaling on the
+symbolic and scaling factors). The composite operation inherits associativity
+from the per-field operations. We document an additional empirically-observed
+property, topology preservation under iterated composition, and validate the
+construction with a suite of fourteen automated tests including bit-exact
+GPU/CPU correspondence and verification on a public motion-capture dataset.
+Three application classes follow: composable agent-state evolution, algebraic
+chain verification, and multi-source state composition. A permissively-licensed
+reference implementation accompanies this paper.
+\end{abstract}
+
+\section{Introduction}
+
+A recurring problem in robotics, swarm coordination, and accountability
+infrastructure is the need for a bounded-width, time-evolving state
+representation that is simultaneously composable, verifiable, and efficient
+enough for edge deployment. Existing representations trade these properties
+against one another. Raw floating-point quaternion streams are compact for
+rotation but offer no composition operation beyond Hamilton multiplication on
+the rotation component, and carry no symbolic metadata. Variable-width
+cryptographic audit chains compose via Merkle structures but are not
+fixed-width and are not amenable to single-cycle hardware composition.
+High-dimensional vector embeddings compose via vector arithmetic but are lossy
+and lack a unit-rotation guarantee.
+
+This paper defines a fixed-width construction that fills the gap. A packet
+carries a unit quaternion plus a small number of symbolic metadata fields plus
+a scaling factor, with a defined composition operation whose result is itself a
+packet of the same width. The resulting algebra has, simultaneously: closure
+under composition, the algebraic structure of a monoid (so chains of operations
+compose freely and associatively), and an empirically-observed
+topology-preservation property under iterated composition.
+
+\section{Construction}
+
+\subsection{The packet structure}
+
+A packet is the tuple
+\[
+p = (q,\; f_a,\; f_b,\; f_c,\; f_d,\; \pi,\; s),
+\]
+where $q \in S^3$ is a unit quaternion in $(w,x,y,z)$ layout; $f_a, f_b, f_c,
+f_d$ are small symbolic fields of fixed bit width; $\pi \in \{0,1\}$ is a parity
+bit; and $s \in \mathbb{R}_{>0}$ is a positive scaling factor. Field widths are
+parameters of the construction. A representative default (widths $4,3,5,3$ bits,
+plus parity, plus a smallest-three quaternion encoding in $32$ bits, plus an
+IEEE-754 binary16 scaling factor) fits a $64$-bit packet.
+
+\subsection{The composition operation}
+
+For two packets $p_1$ and $p_2$, the composition $p_1 \otimes p_2$ is defined
+field-by-field:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Sub-field & Operation & Algebraic basis \\
+\midrule
+$q$    & Hamilton product, then normalize & $S^3$ group structure \\
+$f_a$  & $T_a[i,j]$ lookup (default $i \oplus j$) & $\mathbb{Z}_2^{b}$ abelian group \\
+$f_b$  & $\max(i,j)$ & totally-ordered lattice \\
+$f_c$  & $(i+j) \bmod 2^{b_c}$ & $\mathbb{Z}/2^{b_c}\mathbb{Z}$ group \\
+$f_d$  & $T_d[i,j]$ lookup (default $i \oplus j$) & $\mathbb{Z}_2^{b}$ abelian group \\
+$\pi$  & $\pi_1 \oplus \pi_2$ & $\mathbb{Z}_2$ group \\
+$s$    & $s_1 \cdot s_2$ & $\mathbb{R}_{>0}$ under multiplication \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The identity element is $I = (q_{\mathrm{id}}, 0, 0, 0, 0, 0, 1)$, where
+$q_{\mathrm{id}} = (1,0,0,0)$.
+
+\subsection{Monoid properties}
+
+\begin{proposition}[Closure]
+For all valid packets $p_1, p_2$, the product $p_1 \otimes p_2$ is a valid
+packet.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Each per-field operation maps into the same field. The Hamilton product of two
+unit quaternions, after normalization, is a unit quaternion. XOR and modular
+addition remain in finite range. Lattice maximum of two values in
+$[0, 2^b)$ remains in $[0,2^b)$. The product of two positive reals is a positive
+real.
+\end{proof}
+
+\begin{proposition}[Two-sided identity]
+$I \otimes p = p \otimes I = p$ for all valid $p$.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Field-wise: $q_{\mathrm{id}}$ is the quaternion identity; lookup tables
+satisfy $T[0,j]=j$ and $T[i,0]=i$; $\max(0,x)=x$; $0+x \equiv x \pmod{N}$;
+$0 \oplus x = x$; and $1 \cdot x = x$.
+\end{proof}
+
+\begin{proposition}[Associativity]
+$(a \otimes b) \otimes c = a \otimes (b \otimes c)$ for all valid $a,b,c$.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Each per-field operation is associative on its value space: Hamilton product on
+the quaternion group; XOR on $\mathbb{Z}_2^b$; maximum on a totally-ordered
+lattice; modular addition on $\mathbb{Z}/N\mathbb{Z}$; parity XOR on
+$\mathbb{Z}_2$; multiplication on $\mathbb{R}_{>0}$. A field-wise product of
+associative operations is associative.
+\end{proof}
+
+Together these three propositions establish that the packet space, equipped
+with $\otimes$, is a monoid.
+
+\subsection{Topology preservation}
+
+A property additional to the monoid structure: when the algebra is applied
+iteratively to a stream of input packets via $\mathrm{state}[t{+}1] =
+\mathrm{state}[t] \otimes \mathrm{stim}[t]$, the $H_1$ persistent-homology
+signature of the resulting trajectory of quaternion components is bounded
+relative to the $H_1$ signature of the input stream. Empirically, the ratio of
+total bar persistence (output to input) falls in $[0.3, 5.0]$ for structured
+inputs. We state this as an empirical observation rather than a theorem; a
+formal characterization is left to future work.
+
+\section{Validation}
+
+The accompanying reference implementation passes fourteen automated tests:
+eight algebraic-property tests (left and right identity over $100$ packets,
+associativity over $512$ random triples, closure over $500$ random pairs,
+stability over a $1000$-step self-product chain, power consistency, and
+bit-exact GPU/CPU correspondence) and six stress tests ($10{,}000$-step
+long-horizon stability, single-bit avalanche sensitivity, distinguishability
+across $100$ chains, real-data behavior, field-saturation characterization, and
+scale stability).
+
+The GPU implementation agrees with the CPU reference bit-for-bit on the Hamilton
+product: maximum absolute difference $0.00\mathrm{e}{+}00$ across $100{,}000$
+random pairs at single precision. The real-data test verifies clean behavior on
+the TUM RGB-D Pioneer 360 ground-truth sequence~\cite{Sturm2012}, downloaded at
+runtime with SHA-256 verification, composing $2{,}000$ unit quaternions while
+preserving the unit-norm constraint to machine precision.
+
+The field-saturation test documents an honest limitation: the $\max(\cdot)$
+sub-field saturates under iteration (it is associative with identity $0$ but is
+not invertible), so it functions as a one-way ``high-amplitude event seen''
+flag rather than a state register; the XOR and modular-addition fields are
+information-preserving over their respective groups.
+
+\section{Applications}
+
+\paragraph{Composable agent-state evolution.}
+$\mathrm{state}[t{+}1] = \mathrm{state}[t] \otimes \mathrm{stimulus}[t]$ is a
+single bounded-width operation per time step. The agent's internal state is the
+running composition of all stimuli received.
+
+\paragraph{Algebraic chain verification.}
+For an $N$-packet chain produced sequentially, a verifier computes the
+cumulative product $I \otimes p_1 \otimes \cdots \otimes p_N$ and compares to a
+separately-signed chain-head value. Verification runs in $O(N)$ operations at
+constant per-operation cost. Empirically, a single-bit change anywhere in the
+chain produces a divergent head, so the construction functions as a chain
+digest under any cryptographic signature layered on top.
+
+\paragraph{Multi-source state composition.}
+$N$ independently-evolving state packets compose via the left-fold $p_1 \otimes
+\cdots \otimes p_N$. By associativity the fold may be computed in any order or
+as a parallel tree-reduce. By non-commutativity of the quaternion factor, the
+order of sources is significant.
+
+\section{Relationship to prior work}
+
+The construction does not introduce new mathematics; each component has a long
+literature: quaternion algebra~\cite{Hamilton1844}, persistent
+homology~\cite{Edelsbrunner2002}, finite-group operations on $\mathbb{Z}_2^b$
+and $\mathbb{Z}/N\mathbb{Z}$, and lookup-table substitution. The contribution
+is the specific combination: a closed associative binary operation on a
+fixed-width packet that simultaneously preserves a unit-quaternion integrity
+check, symbolic-metadata semantics under per-field associative operations,
+algebraic-chain composability, and an empirically-observed topology-preservation
+property under iterated composition. We are not aware of this combination in a
+single prior-art reference and welcome pointers to closer prior work.
+
+\section{Availability}
+
+A reference implementation (CPU and GPU), the full validation suite, worked
+examples, and this paper are available under the MIT License at
+\url{https://github.com/consigcody94/quaternion-monoid-algebra} and archived at
+\href{https://doi.org/10.5281/zenodo.20301069}{doi:10.5281/zenodo.20301069}.
+
+\paragraph{Provenance.}
+This work was developed by the author with artificial-intelligence assistance
+used as an engineering aid for implementation, validation, GPU porting, and
+documentation. The conceptual direction and the specific algebraic structure
+imposed on the packet space were the author's.
+
+\begin{thebibliography}{9}
+
+\bibitem{Hamilton1844}
+W.~R. Hamilton.
+\textit{On quaternions; or on a new system of imaginaries in algebra}.
+Philosophical Magazine, 25(3):489--495, 1844.
+
+\bibitem{Edelsbrunner2002}
+H.~Edelsbrunner, D.~Letscher, and A.~Zomorodian.
+\textit{Topological persistence and simplification}.
+Discrete \& Computational Geometry, 28(4):511--533, 2002.
+
+\bibitem{Sturm2012}
+J.~Sturm, N.~Engelhard, F.~Endres, W.~Burgard, and D.~Cremers.
+\textit{A benchmark for the evaluation of RGB-D SLAM systems}.
+In Proc. International Conference on Intelligent Robot Systems (IROS), 2012.
+
+\end{thebibliography}
+
+\end{document}
