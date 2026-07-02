@@ -1,5 +1,6 @@
 # Quaternion-Monoid Algebra
 
+[![PyPI](https://img.shields.io/pypi/v/quaternion-monoid-algebra)](https://pypi.org/project/quaternion-monoid-algebra/)
 [![DOI](https://zenodo.org/badge/1243952950.svg)](https://doi.org/10.5281/zenodo.20301069)
 [![tests](https://github.com/consigcody94/quaternion-monoid-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/consigcody94/quaternion-monoid-algebra/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -42,7 +43,7 @@ Installable Python package (`src/quaternion_monoid_algebra/`) with a scalar API,
 ## Install
 
 ```bash
-pip install git+https://github.com/consigcody94/quaternion-monoid-algebra
+pip install quaternion-monoid-algebra
 ```
 
 or, for development:
