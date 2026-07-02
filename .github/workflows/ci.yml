@@ -7,6 +7,16 @@ on:
     branches: [ master, main ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check src tests examples benchmarks
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -18,13 +28,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+          cache: pip
+      - name: Install package with test extras
         run: |
           python -m pip install --upgrade pip
-          pip install numpy scipy gudhi persim
-      - name: Run property test suite
+          pip install -e .[test]
+          # Topology extra is optional; the suite skips cleanly without it
+          pip install gudhi || echo "gudhi unavailable; topology test will skip"
+      - name: Run pytest suite
+        run: pytest -q
+      - name: Run property test runner
         run: python tests/run_all.py
-      # Stress tests download a public dataset; run only the offline subset in CI
-      # by skipping the network test if the dataset is unavailable.
-      - name: Run stress tests (offline-tolerant)
-        run: python tests/stress_tests.py || true
+      - name: Run stress tests
+        # The runner returns exit 0 with a SKIP if the TUM download is
+        # unavailable, so a nonzero exit here is a genuine failure.
+        run: python tests/stress_tests.py
