@@ -1,6 +1,7 @@
 # Quaternion-Monoid Algebra
 
 [![DOI](https://zenodo.org/badge/1243952950.svg)](https://doi.org/10.5281/zenodo.20301069)
+[![tests](https://github.com/consigcody94/quaternion-monoid-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/consigcody94/quaternion-monoid-algebra/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A compositional algebra over fixed-width quaternionic-symbolic state packets. Defines a closed associative binary operation with two-sided identity on a packet space whose elements carry a unit-quaternion rotation plus symbolic metadata plus a scaling factor. Implements the construction on CPU and GPU with bit-exact correspondence between the two implementations.
@@ -167,6 +168,24 @@ PRs welcome. Particularly interested in:
 - Hardware implementations (Verilog/SystemVerilog references, ASIC synthesis numbers)
 - Theoretical results sharpening `paper/topology_notes.md` — in particular, sufficient conditions on stimulus streams for a two-sided H₁-ratio bound under iterated composition
 - Connections to existing algebraic-structure literature this construction may be related to
+
+## Citing
+
+If you use this library in academic work, cite the Zenodo archive (the concept DOI below always resolves to the latest release; version DOIs are on the [releases page](https://github.com/consigcody94/quaternion-monoid-algebra/releases)):
+
+```bibtex
+@software{churchwell_quaternion_monoid_algebra,
+  author    = {Churchwell, Cody},
+  title     = {Quaternion-Monoid Algebra: A Compositional Algebra over
+               Fixed-Width Quaternionic-Symbolic State Packets},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20301069},
+  url       = {https://github.com/consigcody94/quaternion-monoid-algebra}
+}
+```
+
+GitHub's "Cite this repository" button (from [`CITATION.cff`](CITATION.cff)) produces the same reference in APA/BibTeX.
 
 ## License
 

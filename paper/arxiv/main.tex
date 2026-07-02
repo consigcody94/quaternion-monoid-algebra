@@ -13,14 +13,16 @@
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
 \newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
 
 \title{Compositional Algebra over Fixed-Width\\
 Quaternionic-Symbolic State Packets}
 \author{Cody Churchwell\\
 \small Independent Researcher\\
 \small \texttt{github.com/consigcody94/quaternion-monoid-algebra}}
-\date{May 2026}
+\date{May 2026 (v1); July 2026 (this version, adding the isometry results of Section 3)}
 
 \begin{document}
 \maketitle
@@ -36,13 +38,23 @@ associative monoid operations on its respective value space (Hamilton
 multiplication on the quaternion factor; lookup-table substitution, lattice
 maximum, modular addition, parity XOR, and multiplicative scaling on the
 symbolic and scaling factors). The composite operation inherits associativity
-from the per-field operations. We document an additional empirically-observed
-property, topology preservation under iterated composition, and validate the
-construction with a suite of fourteen automated tests including bit-exact
-GPU/CPU correspondence and verification on a public motion-capture dataset.
-Three application classes follow: composable agent-state evolution, algebraic
-chain verification, and multi-source state composition. A permissively-licensed
-reference implementation accompanies this paper.
+from the per-field operations. On the topological side we prove two results
+and scope a third: translations by unit quaternions are isometries of the
+projective geodesic metric, so composing an entire configuration with a
+common packet preserves Vietoris--Rips persistence diagrams \emph{exactly}
+in every homology dimension; iterated composition is an isometric
+development whose consecutive step lengths equal the stimulus offsets from
+identity, with a subadditive window bound; and no universal two-sided bound
+on the $H_1$-persistence ratio of trajectory to input stream can hold (a
+constant stream inflates $H_1$ unboundedly), so the observed bounded ratio
+is documented as an empirical property of structured stimulus classes. The
+construction is validated by a layered suite (property-based tests with
+machine checks of each proved statement, an algebraic-property runner with
+bit-exact GPU/CPU correspondence, and stress tests on two public motion
+datasets: TUM RGB-D and EuRoC MAV). Three application classes follow:
+composable agent-state evolution, algebraic chain verification, and
+multi-source state composition. A permissively-licensed reference
+implementation accompanies this paper.
 \end{abstract}
 
 \section{Introduction}
@@ -146,40 +158,138 @@ associative operations is associative.
 Together these three propositions establish that the packet space, equipped
 with $\otimes$, is a monoid.
 
-\subsection{Topology preservation}
+\section{Topological properties}
 
-A property additional to the monoid structure: when the algebra is applied
-iteratively to a stream of input packets via $\mathrm{state}[t{+}1] =
-\mathrm{state}[t] \otimes \mathrm{stim}[t]$, the $H_1$ persistent-homology
-signature of the resulting trajectory of quaternion components is bounded
-relative to the $H_1$ signature of the input stream. Empirically, the ratio of
-total bar persistence (output to input) falls in $[0.3, 5.0]$ for structured
-inputs. We state this as an empirical observation rather than a theorem; a
-formal characterization is left to future work.
+Work in $\mathbb{H} \cong \mathbb{R}^4$ with the Euclidean inner product
+$\langle a, b\rangle = \mathrm{Re}(a\bar b)$. The validation suite measures
+distances between unit quaternions with
+\[
+d(p, q) \;=\; \arccos\bigl(\lvert\langle p, q\rangle\rvert\bigr),
+\]
+the geodesic metric on $S^3/\{\pm 1\} \cong \mathbb{RP}^3 \cong SO(3)$: the
+absolute value identifies $q$ and $-q$, which encode the same rotation. For
+unit inputs the quaternion sub-field of $g \otimes p$ is exactly the left
+translation $L_{q_g}: q \mapsto q_g\, q$ (renormalization is the identity
+in exact arithmetic since $\lvert q_g q\rvert = \lvert q_g\rvert\,\lvert
+q\rvert = 1$).
+
+\begin{lemma}[Translations are isometries]\label{lem:iso}
+For any unit quaternion $g$ and all $a, b \in \mathbb{H}$:
+$\langle ga, gb\rangle = \langle a, b\rangle$ and
+$\langle ag, bg\rangle = \langle a, b\rangle$.
+\end{lemma}
+
+\begin{proof}
+Using $\overline{xy} = \bar y\,\bar x$ and cyclicity of the real part,
+$\mathrm{Re}(xy) = \mathrm{Re}(yx)$:
+\[
+\langle ga, gb\rangle
+  = \mathrm{Re}\bigl(ga\,\overline{gb}\bigr)
+  = \mathrm{Re}\bigl(g\,a\bar b\,\bar g\bigr)
+  = \mathrm{Re}\bigl(a\bar b\,\bar g g\bigr)
+  = \mathrm{Re}\bigl(a\bar b\bigr)\lvert g\rvert^2
+  = \langle a, b\rangle,
+\]
+and $\langle ag, bg\rangle = \mathrm{Re}(ag\bar g\bar b) =
+\mathrm{Re}(a\bar b)\lvert g\rvert^2 = \langle a, b\rangle$.
+\end{proof}
+
+Since $d$ is a function of $\lvert\langle\cdot,\cdot\rangle\rvert$ alone,
+left and right translations are isometries of $(\mathbb{RP}^3, d)$.
+
+\begin{theorem}[Exact preservation under common composition]\label{thm:exact}
+Let $P = \{p_1, \dots, p_n\}$ be packets and $g$ any packet. The quaternion
+configurations of $P$ and of $\{g \otimes p_i\}$ (or $\{p_i \otimes g\}$)
+have identical pairwise distance matrices under $d$, hence identical
+Vietoris--Rips filtrations, hence equal persistence diagrams in every
+homology dimension.
+\end{theorem}
+
+\begin{proof}
+The quaternion component of $g \otimes p_i$ is $L_{q_g} q_{p_i}$ exactly;
+by Lemma~\ref{lem:iso} all pairwise distances are unchanged; a
+Vietoris--Rips filtration is a function of the distance matrix alone, and
+persistence diagrams are determined by the filtration.
+\end{proof}
+
+This is the formal content behind multi-source composition (Section 5):
+folding a common state into every member of a configuration preserves the
+configuration's topological signature exactly, not approximately.
+
+\begin{lemma}[Subadditivity]\label{lem:sub}
+$d(1, ab) \le d(1, a) + d(1, b)$ for unit quaternions $a, b$.
+\end{lemma}
+
+\begin{proof}
+Triangle inequality through $a$, then left-invariance:
+$d(1, ab) \le d(1, a) + d(a, ab) = d(1, a) + d(1, b)$.
+\end{proof}
+
+\begin{proposition}[Lipschitz development]\label{prop:dev}
+For the trajectory $q_t = x_1 x_2 \cdots x_t$ of the recurrence
+$q_t = q_{t-1}\, x_t$ from $q_0 = 1$, and $s < t$:
+\[
+d(q_s, q_t) \;=\; d\bigl(1,\; x_{s+1} \cdots x_t\bigr)
+  \;\le\; \sum_{i=s+1}^{t} d(1, x_i),
+\]
+and in particular $d(q_{t-1}, q_t) = d(1, x_t)$ exactly: consecutive
+trajectory step lengths are precisely the stimulus offsets from identity.
+\end{proposition}
+
+\begin{proof}
+Cancel $q_s$ on the left by invariance (Lemma~\ref{lem:iso}); induct on the
+window length with Lemma~\ref{lem:sub}.
+\end{proof}
+
+\begin{remark}[Iterated preservation is empirical, necessarily]\label{rem:emp}
+When the algebra is applied iteratively via $\mathrm{state}[t{+}1] =
+\mathrm{state}[t] \otimes \mathrm{stim}[t]$, the validation suite observes
+that the $H_1$ persistence ratio of trajectory to input stream falls in
+$[0.3, 5.0]$ for structured inputs (multi-frequency torus walks and the
+real robot/MAV streams of Section 4). This cannot be a theorem for
+arbitrary streams: a \emph{constant} stream $x_t = x$ has a one-point input
+set (zero $H_1$) while its trajectory $\{x^k\}$ winds a geodesic circle
+whose Rips filtration carries positive $H_1$, so the ratio is unbounded
+above; conversely, streams alternating between two orthogonal one-parameter
+subgroups can spread cumulative products quasi-uniformly, washing out
+trajectory $H_1$. Both the proved statements above and this impossibility
+demonstration are machine-checked in the repository's test suite.
+\end{remark}
 
 \section{Validation}
 
-The accompanying reference implementation passes fourteen automated tests:
-eight algebraic-property tests (left and right identity over $100$ packets,
-associativity over $512$ random triples, closure over $500$ random pairs,
-stability over a $1000$-step self-product chain, power consistency, and
-bit-exact GPU/CPU correspondence) and six stress tests ($10{,}000$-step
-long-horizon stability, single-bit avalanche sensitivity, distinguishability
-across $100$ chains, real-data behavior, field-saturation characterization, and
-scale stability).
+The accompanying reference implementation is validated in three layers: a
+property-based suite ($77$ tests driven by Hypothesis, covering the monoid
+laws under adversarial inputs, boundary validation, custom-table
+validation, batch-versus-scalar equivalence, and machine checks of
+Lemma~\ref{lem:iso} through Remark~\ref{rem:emp}); eight algebraic-property
+tests (left and right identity over $100$ packets, associativity over $512$
+random triples, closure over $500$ random pairs, stability over a
+$1000$-step self-product chain, power consistency, and bit-exact GPU/CPU
+correspondence); and seven stress tests ($10{,}000$-step long-horizon
+stability, single-bit avalanche sensitivity, distinguishability across
+$100$ chains, real-data behavior on two public motion streams,
+field-saturation characterization, and scale stability).
 
 The GPU implementation agrees with the CPU reference bit-for-bit on the Hamilton
 product: maximum absolute difference $0.00\mathrm{e}{+}00$ across $100{,}000$
-random pairs at single precision. The real-data test verifies clean behavior on
-the TUM RGB-D Pioneer 360 ground-truth sequence~\cite{Sturm2012}, downloaded at
-runtime with SHA-256 verification, composing $2{,}000$ unit quaternions while
-preserving the unit-norm constraint to machine precision.
+random pairs at single precision. The real-data tests verify clean behavior on
+the TUM RGB-D Pioneer 360 ground-truth sequence~\cite{Sturm2012} ($2{,}000$
+poses) and the EuRoC MAV Machine Hall 01 ground truth~\cite{Burri2016}
+($36{,}000$ poses), each downloaded at runtime with SHA-256 pinning, composing
+every quaternion while preserving the unit-norm constraint to machine
+precision.
 
 The field-saturation test documents an honest limitation: the $\max(\cdot)$
 sub-field saturates under iteration (it is associative with identity $0$ but is
 not invertible), so it functions as a one-way ``high-amplitude event seen''
 flag rather than a state register; the XOR and modular-addition fields are
-information-preserving over their respective groups.
+information-preserving over their respective groups. The reference
+implementation additionally ships a library of verified alternative
+sub-field constructions (modular addition and multiplication, lattice
+maximum and minimum, bitwise conjunction and disjunction) with a
+monoid-table validator that checks closure, the identity laws, and full
+associativity with a counterexample on failure.
 
 \section{Applications}
 
@@ -244,6 +354,12 @@ Discrete \& Computational Geometry, 28(4):511--533, 2002.
 J.~Sturm, N.~Engelhard, F.~Endres, W.~Burgard, and D.~Cremers.
 \textit{A benchmark for the evaluation of RGB-D SLAM systems}.
 In Proc. International Conference on Intelligent Robot Systems (IROS), 2012.
+
+\bibitem{Burri2016}
+M.~Burri, J.~Nikolic, P.~Gohl, T.~Schneider, J.~Rehder, S.~Omari,
+M.~W. Achtelik, and R.~Siegwart.
+\textit{The EuRoC micro aerial vehicle datasets}.
+The International Journal of Robotics Research, 35(10):1157--1163, 2016.
 
 \end{thebibliography}
 
