@@ -225,11 +225,19 @@ class Packet:
                 f"d={self.field_d}, p={self.parity}, s={self.scale:.4f})")
 
 
-def identity_packet() -> Packet:
-    """The two-sided identity element of the monoid: I such that I ⊗ p = p ⊗ I = p."""
+def identity_packet(field_a: int = 0, field_d: int = 0) -> Packet:
+    """The two-sided identity element of the monoid: I such that I ⊗ p = p ⊗ I = p.
+
+    ``field_a`` and ``field_d`` are the identity elements of the two
+    lookup-table sub-fields. The defaults (0) match the default XOR tables.
+    When composing with a custom table whose identity is not 0 — e.g. an
+    AND table (identity all-ones) or a min table (identity n-1) from
+    :mod:`~quaternion_monoid_algebra.tables` — pass the matching values,
+    e.g. ``identity_packet(field_a=15)``.
+    """
     return Packet(
         quaternion=np.array([1.0, 0.0, 0.0, 0.0]),
-        field_a=0, field_b=0, field_c=0, field_d=0, parity=0,
+        field_a=field_a, field_b=0, field_c=0, field_d=field_d, parity=0,
         scale=1.0,
     )
 
