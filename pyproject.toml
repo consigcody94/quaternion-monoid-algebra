@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quaternion-monoid-algebra"
-version = "0.2.0"
+version = "0.3.0"
 description = "Compositional algebra over fixed-width quaternionic-symbolic state packets: a closed associative binary operation with two-sided identity, on CPU and GPU."
 readme = "README.md"
 license = "MIT"

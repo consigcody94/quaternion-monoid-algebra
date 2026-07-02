@@ -1,5 +1,12 @@
 # Stress Test Report
 
+> **Point-in-time snapshot (v0.1.0, May 2026).** This report documents the
+> original six-test stress run and embeds its output verbatim. The suite has
+> since grown: v0.3.0 added a seventh stress test streaming the EuRoC MAV
+> Machine Hall 01 ground truth (see `tests/stress_tests.py`, which is the
+> authoritative list, and ATTRIBUTION.md for the data source). Run
+> `python tests/stress_tests.py` for current results.
+
 The 8 property tests in `tests/run_all.py` verify the algebraic claims (closure, identity, associativity, GPU bit-exact, topology preservation). This report covers additional stress tests that verify the algebra is **useful** in practice. All 6 stress tests pass on the reference implementation.
 
 Run with:

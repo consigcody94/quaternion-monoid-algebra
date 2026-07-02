@@ -35,12 +35,12 @@ JOSS requires software that demonstrates **iterative public development over tim
 To convert this from "staged" to "submittable," accumulate genuine development history by working the roadmap in the paper's "Open questions" section:
 
 - ~~Package the library for installation and add a property-based (Hypothesis) test suite~~ — done in v0.2.0 (2026-07-01), along with the vectorized batch API and input validation
-- Add a formal proof (or partial characterization) of the topology-preservation property
-- Add alternative sub-field constructions and document the trade-offs
-- Add real-world dataset validation beyond TUM (EuRoC MAV, JIGSAWS, IMU recordings)
+- ~~Add a formal proof (or partial characterization) of the topology-preservation property~~ — done in v0.3.0 (2026-07-02): `paper/topology_notes.md` proves exact preservation under common composition and the Lipschitz development bound, machine-checked in `tests/test_topology.py`; the iterated-composition band is now precisely scoped as empirical. Remaining theory work: sufficient conditions for a two-sided H₁ bound.
+- ~~Add alternative sub-field constructions and document the trade-offs~~ — done in v0.3.0: `quaternion_monoid_algebra.tables` (mod-add, mod-mul, max, min, AND, OR) with a trade-off table in the README.
+- Add real-world dataset validation beyond TUM and EuRoC MAV (~~EuRoC MAV~~ done in v0.3.0; JIGSAWS, IMU recordings still open)
 - Add a hardware reference (Verilog/SystemVerilog) and synthesis numbers
 - Respond to any issues or PRs that come in
-- Cut additional tagged releases (v0.2.0, etc.) as the work grows
+- Cut additional tagged releases as the work grows (v0.2.0 and v0.3.0 done)
 
 ## Submission process (when ready)
 

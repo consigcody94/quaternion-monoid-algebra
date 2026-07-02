@@ -8,9 +8,10 @@ the README and paper claim about real behavior:
     1. Long-horizon stability: 10,000-step iteration without NaN / overflow / norm drift
     2. Avalanche sensitivity: single-packet tampering produces total head divergence
     3. Distinguishability: 100 distinct random chains produce 100 distinct heads
-    4. Real-data behavior: TUM Pioneer 360 sequence runs through the algebra cleanly
-    5. Field saturation honesty: field_b under max() saturates; field_a/c/d/parity do not
-    6. Scale stability: scale factor stays in finite range under realistic iteration
+    4. Real-data behavior (TUM): Pioneer 360 sequence runs through the algebra cleanly
+    5. Real-data behavior (EuRoC): MAV Machine Hall 01 ground truth composes cleanly
+    6. Field saturation honesty: field_b under max() saturates; field_a/c/d/parity do not
+    7. Scale stability: scale factor stays in finite range under realistic iteration
 
 Run from repo root:  python tests/stress_tests.py
 """
@@ -153,42 +154,49 @@ def test_distinguishability():
 
 
 # ---------------------------------------------------------------------------
-# 4. Real-data behavior (TUM Pioneer 360)
+# 4. Real-data behavior (TUM Pioneer 360 and EuRoC MAV MH_01)
 # ---------------------------------------------------------------------------
 
 TUM_URL = ("https://cvg.cit.tum.de/rgbd/dataset/freiburg2/"
             "rgbd_dataset_freiburg2_pioneer_360-groundtruth.txt")
 TUM_SHA = "1338bae01eb0219fcfc59b0c1a28c2ee091e36a6490f0cc022846328cebc1a60"
 
+# EuRoC MAV Machine Hall 01 ground truth (Burri et al., IJRR 2016), in
+# TUM trajectory format, as mirrored by the OpenVINS project. Pinned to a
+# commit SHA so the download is reproducible. See ATTRIBUTION.md.
+EUROC_URL = ("https://raw.githubusercontent.com/rpng/open_vins/"
+             "485d0dc4a421d9ff47aade93589a39c76a80a57d/"
+             "ov_data/euroc_mav/MH_01_easy.txt")
+EUROC_SHA = "ab1579de35a047d241e2d0d1a4f4306b4fa51d99c6f11bcdebf336ab2b784df9"
 
-def test_real_data():
-    header("Real-data behavior: TUM RGB-D Pioneer 360 (2,000 poses)")
-    cache = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "data_cache",
-                          "tum_pioneer360.txt")
-    cache = os.path.abspath(cache)
+
+def _real_data_stream(title, short, url, sha, cache_name, max_poses):
+    """Download (with SHA-256 pinning) a TUM-format trajectory file
+    (t tx ty tz qx qy qz qw per line), stream its quaternions through the
+    algebra, and check the composed state is a valid packet."""
+    header(f"Real-data behavior: {title}")
+    cache = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "data_cache", cache_name))
     os.makedirs(os.path.dirname(cache), exist_ok=True)
 
     if not os.path.exists(cache):
-        print(f"  downloading {TUM_URL}")
+        print(f"  downloading {url}")
         try:
-            urllib.request.urlretrieve(TUM_URL, cache)
+            urllib.request.urlretrieve(url, cache)
         except Exception as e:
             print(f"  [SKIP] download failed: {e}")
             return None
 
-    # Verify hash
     h = hashlib.sha256()
     with open(cache, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     actual = h.hexdigest()
-    if actual != TUM_SHA:
-        print(f"  [FAIL] SHA-256 mismatch: expected {TUM_SHA}, got {actual}")
+    if actual != sha:
+        print(f"  [FAIL] SHA-256 mismatch: expected {sha}, got {actual}")
         return False
-    print(f"  TUM SHA-256 verified: {actual}")
+    print(f"  {short} SHA-256 verified: {actual}")
 
-    # Parse first 2000 quaternions (TUM format: t tx ty tz qx qy qz qw)
     qs = []
     with open(cache, "r") as f:
         for line in f:
@@ -201,12 +209,11 @@ def test_real_data():
             except (ValueError, IndexError):
                 continue
             qs.append([qw, qx, qy, qz])
-            if len(qs) >= 2000:
+            if len(qs) >= max_poses:
                 break
     qs = normalize_quaternion(np.array(qs))
-    print(f"  parsed {len(qs)} unit quaternions from TUM source")
+    print(f"  parsed {len(qs)} unit quaternions from {short} source")
 
-    # Run through the algebra
     t0 = time.time()
     state = identity_packet()
     for q in qs:
@@ -222,8 +229,21 @@ def test_real_data():
     print(f"  final field_a={state.field_a}, b={state.field_b}, "
           f"c={state.field_c}, d={state.field_d}, p={state.parity}")
     ok = abs(final_norm - 1.0) < 1e-6 and np.isfinite(state.scale) and state.scale > 0
-    print(f"  [{'PASS' if ok else 'FAIL'}] real TUM data composes cleanly with unit-norm output")
+    print(f"  [{'PASS' if ok else 'FAIL'}] real {short} data composes cleanly "
+          f"with unit-norm output")
     return ok
+
+
+def test_real_data():
+    return _real_data_stream(
+        "TUM RGB-D Pioneer 360 (2,000 poses)", "TUM",
+        TUM_URL, TUM_SHA, "tum_pioneer360.txt", max_poses=2000)
+
+
+def test_real_data_euroc():
+    return _real_data_stream(
+        "EuRoC MAV Machine Hall 01 (36,000 poses)", "EuRoC",
+        EUROC_URL, EUROC_SHA, "euroc_mh01.txt", max_poses=36_000)
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +349,7 @@ def main():
     results.append(("avalanche sensitivity",        test_avalanche()))
     results.append(("distinguishability",           test_distinguishability()))
     results.append(("real-data behavior (TUM)",     test_real_data()))
+    results.append(("real-data behavior (EuRoC)",   test_real_data_euroc()))
     results.append(("field saturation honesty",     test_field_saturation()))
     results.append(("scale stability",              test_scale_stability()))
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.0 — 2026-07-02
+
+### Added
+- **Formal topology characterization** (`paper/topology_notes.md`): proved that composition with a common packet preserves persistence diagrams *exactly* (unit-quaternion translations are isometries of the projective metric — Lemma 1 / Theorem 1), that iterated composition is an isometric development whose step lengths exactly equal the stimulus offsets with a subadditive window bound (Lemma 2 / Proposition 3), and demonstrated why the iterated-composition H₁-ratio band must remain empirical (a constant stream inflates H₁ unboundedly). Every proved statement is machine-checked in `tests/test_topology.py`.
+- **Alternative sub-field constructions** (`quaternion_monoid_algebra.tables`): verified monoid tables with documented trade-offs — `make_mod_add_table` (group, mixing), `make_mod_mul_table` (monoid, absorbing zero), `make_max_table`/`make_min_table` (bands, saturating), `make_and_table`/`make_or_table` (bands, monotone bit registers). `identity_packet(field_a=..., field_d=...)` now accepts the identity elements of custom tables whose identity is not 0.
+- **Topology utilities** (`quaternion_monoid_algebra.topology`): `pairwise_quaternion_distance` (the projective geodesic metric used by the validation suite) and `distance_to_identity`.
+- **EuRoC MAV real-data stress test**: streams 36,000 poses of the Machine Hall 01 ground truth (Burri et al., IJRR 2016; OpenVINS mirror pinned by commit and SHA-256) through the algebra, alongside the existing TUM RGB-D test. Stress suite is now 7 tests; pytest suite is now 77 tests.
+
 ## v0.2.0 — 2026-07-01
 
 ### Added

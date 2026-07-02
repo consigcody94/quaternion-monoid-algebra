@@ -17,18 +17,20 @@ git clone https://github.com/consigcody94/quaternion-monoid-algebra
 cd quaternion-monoid-algebra
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
-pip install numpy scipy gudhi persim
+pip install -e .[test]
+pip install gudhi                 # optional, for the topology tests
 pip install cupy-cuda12x          # optional, for GPU tests
 ```
 
 ## Running the tests
 
 ```bash
+pytest                         # property-based suite (Hypothesis-driven)
 python tests/run_all.py        # 8 algebraic-property tests
-python tests/stress_tests.py   # 6 stress tests (one downloads a public dataset)
+python tests/stress_tests.py   # 7 stress tests (two download public datasets)
 ```
 
-All 14 tests should pass. The GPU bit-exact test and the TUM real-data test will skip cleanly if CuPy or network access is unavailable, respectively.
+All tests should pass. The GPU bit-exact test and the TUM/EuRoC real-data tests will skip cleanly if CuPy or network access is unavailable, respectively.
 
 ## Pull request guidelines
 

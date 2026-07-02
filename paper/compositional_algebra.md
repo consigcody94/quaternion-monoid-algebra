@@ -97,7 +97,7 @@ Therefore the field-wise composition `⊗` is associative on the packet space, a
 
 A property additional to the monoid structure: when the algebra is applied iteratively to a stream of input packets (e.g., `state[t+1] = state[t] ⊗ stim[t]`), the H₁ persistent-homology signature of the resulting trajectory of quaternion components is bounded relative to the H₁ signature of the input stream. Empirically, the ratio of total bar persistence (output to input) falls in [0.3, 5.0] for structured inputs.
 
-This is not a theorem proven in this paper. It is documented as an empirical observation in the validation suite. A formal proof or characterization of conditions under which the bound holds is a target for future work.
+This is not a theorem proven in this paper. It is documented as an empirical observation in the validation suite. A partial formal characterization now exists in `topology_notes.md` (same directory): composition of a whole configuration with a *common* packet preserves persistence diagrams exactly (unit-quaternion translations are isometries of the projective metric), iterated composition is an isometric development whose step lengths exactly equal the stimulus offsets from identity with a subadditive window bound, and the two-sided H₁-ratio band demonstrably cannot hold for arbitrary streams (a constant stream inflates H₁ without bound), which is why it is stated as an empirical property of the tested stimulus classes. Sufficient conditions for a two-sided bound remain future work.
 
 ## 3. Validation
 
@@ -203,12 +203,12 @@ What is new here is the specific combination: a closed associative binary operat
 
 A non-exhaustive list of directions the construction invites:
 
-- **Topology-preservation theorem.** A formal characterization of when and how strongly the H₁-persistence bound holds. Candidate approach: filtration-stability arguments from the persistent-homology stability literature.
-- **Alternative sub-field constructions.** The defaults (XOR, max, mod-N add, multiply) are one choice. Other associative monoid operations on the same value spaces would yield other valid constructions with different semantics.
+- **Topology-preservation theorem.** Partially addressed in `topology_notes.md` (exact preservation under common composition; Lipschitz development bound; impossibility of a universal two-sided bound). Still open: sufficient conditions on stimulus streams for a two-sided H₁-persistence bound under iterated composition. Candidate approach: filtration-stability arguments from the persistent-homology stability literature.
+- **Alternative sub-field constructions.** Partially addressed: `quaternion_monoid_algebra.tables` ships verified mod-add, mod-mul, max, min, AND, and OR families with documented trade-offs. Other associative monoid operations on the same value spaces would yield further constructions with different semantics.
 - **Higher-dimensional analogues.** The construction extends naturally from S³ (unit quaternions) to S^n for higher-dimensional rotation representations.
 - **Group-theoretic characterization.** Is the packet space, equipped with `⊗`, a finitely-generated free monoid quotient by which relations? What is its representation theory?
 - **Hardware silicon characterization.** The 28 nm projections are based on cell-library numbers, not measured chip. A tape-out would confirm or refute the energy and area projections.
-- **Real-world dataset validation.** The validation suite uses synthetic inputs. Real motion-capture datasets, real robotic telemetry, and real swarm-coordination logs would exercise the construction under conditions the synthetic suite does not.
+- **Real-world dataset validation.** Partially addressed: the stress suite streams the TUM RGB-D Pioneer 360 and EuRoC MAV Machine Hall 01 ground-truth sequences through the algebra. Further real robotic telemetry and swarm-coordination logs would exercise the construction under conditions these do not.
 
 ## 9. License and provenance
 

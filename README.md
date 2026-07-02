@@ -22,7 +22,7 @@ this library defines a binary operation `packet_product` (denoted `⊗`) such th
 - `(a ⊗ b) ⊗ c = a ⊗ (b ⊗ c)` for all valid triples (**associativity**)
 - iterating the operation `state[t+1] = state[t] ⊗ stim[t]` preserves the H₁ persistent-homology signature of the input stream within a bounded ratio (**topology preservation**)
 
-Together, closure + associativity + identity make the packet space a **monoid**. Topology preservation is an additional empirical property documented by the validation suite.
+Together, closure + associativity + identity make the packet space a **monoid**. On topology preservation, [`paper/topology_notes.md`](paper/topology_notes.md) separates what is proved from what is empirical: composing a whole configuration with a *common* packet preserves persistence diagrams **exactly** (translations by unit quaternions are isometries — proved, machine-checked), iterated composition is an isometric development whose step lengths exactly equal the stimulus offsets (proved), and the bounded-H₁-ratio band for iterated composition is an empirical property of the tested stimulus classes, documented by the validation suite.
 
 ## Why this might be useful
 
@@ -36,7 +36,7 @@ Three application classes the construction supports natively:
 
 ## Status
 
-Installable Python package (`src/quaternion_monoid_algebra/`) with a scalar API, a vectorized batch API, and a CuPy GPU port. Three layers of validation in `tests/`: a pytest + Hypothesis property suite, the original 8-test property runner, and 6 stress tests (including real-data behavior on a public TUM RGB-D sequence). White paper in `paper/`. Use cases discussed in `examples/`.
+Installable Python package (`src/quaternion_monoid_algebra/`) with a scalar API, a vectorized batch API, a library of alternative sub-field constructions, and a CuPy GPU port. Three layers of validation in `tests/`: a pytest + Hypothesis property suite (including machine checks of the proved topology statements), the original 8-test property runner, and 7 stress tests (including real-data behavior on public TUM RGB-D and EuRoC MAV sequences). White paper and formal topology notes in `paper/`. Use cases discussed in `examples/`.
 
 ## Install
 
@@ -64,8 +64,9 @@ pip install cupy-cuda12x     # optional: enables the GPU tests
 [GPU bit-exact]           max GPU vs CPU diff on Hamilton product = 0.00e+00
 [Topology preservation]   H₁ persistence ratio in target band [0.3, 5.0]
 
-TOTAL: 8 of 8 property tests pass, plus 6 of 6 stress tests
-       and a 49-test pytest + Hypothesis suite
+TOTAL: 8 of 8 property tests pass, plus 7 of 7 stress tests
+       (including real TUM RGB-D and EuRoC MAV data) and a
+       77-test pytest + Hypothesis suite
 ```
 
 Reproduce with:
@@ -125,11 +126,25 @@ Measured on a Ryzen 5700G (see `benchmarks/bench.py` to reproduce on your machin
 | batch `packet_product_batch` (NumPy) | ~3.6 M ops/sec |
 | tree-reduce chain head (NumPy) | ~2.2 M packets/sec |
 
-Custom sub-field operations can be swapped in via lookup tables; check a candidate table once with `validate_monoid_table(table)` (it verifies closure, the identity laws, and full associativity, with a counterexample on failure) before passing it to `packet_product`.
+## Choosing sub-field operations
+
+Custom sub-field operations can be swapped in via lookup tables. `quaternion_monoid_algebra.tables` ships a library of verified monoid constructions with different trade-offs:
+
+| constructor | identity | structure | behavior under iteration |
+|---|---|---|---|
+| `make_xor_table(bits)` | 0 | group | information-preserving, mixing |
+| `make_mod_add_table(n)` | 0 | group | information-preserving, mixing |
+| `make_mod_mul_table(n)` | 1 | monoid | 0 is absorbing (one zero packet zeroes the field forever) |
+| `make_max_table(n)` | 0 | band | saturates upward: a one-way high-water mark |
+| `make_min_table(n)` | n−1 | band | saturates downward |
+| `make_and_table(bits)` | all-ones | band | bits only clear: "capabilities remaining" |
+| `make_or_table(bits)` | 0 | band | bits only set: "events seen" flags |
+
+Groups mix and preserve information (best avalanche/distinguishability); bands are idempotent one-way registers by design. Check any hand-built table once with `validate_monoid_table(table, identity=...)` (it verifies closure, the identity laws, and full associativity, with a counterexample on failure) before passing it to `packet_product`. **Gotcha:** for tables whose identity element is not 0 (AND, min, mod-mul), build the matching monoid identity with `identity_packet(field_a=15)` etc. — the default `identity_packet()` assumes identity 0.
 
 ## Paper
 
-A standalone write-up of the construction and its properties is in [`paper/compositional_algebra.md`](paper/compositional_algebra.md). It covers the field-by-field construction, the proof sketches for associativity of each sub-field operation, the topology-preservation claim, and the three application classes above.
+A standalone write-up of the construction and its properties is in [`paper/compositional_algebra.md`](paper/compositional_algebra.md). It covers the field-by-field construction, the proof sketches for associativity of each sub-field operation, the topology-preservation claim, and the three application classes above. Formal statements and proofs of the topology results (exact preservation under common composition; the Lipschitz development bound; why iterated preservation is empirical, not a theorem) are in [`paper/topology_notes.md`](paper/topology_notes.md), each machine-checked in `tests/test_topology.py`.
 
 ## Use case examples
 
@@ -147,10 +162,10 @@ This work is by Cody Churchwell ([@consigcody94](https://github.com/consigcody94
 
 PRs welcome. Particularly interested in:
 
-- Alternative sub-field constructions (other than Hamilton, lookup-table substitution, lattice max, mod-N addition, multiplicative scaling) that preserve associativity
-- Real-world dataset validation results
+- Alternative sub-field constructions beyond the families shipped in `quaternion_monoid_algebra.tables` (XOR, mod-add, mod-mul, max, min, AND, OR) that preserve associativity
+- Real-world dataset validation results beyond the TUM RGB-D and EuRoC MAV streams in the stress suite
 - Hardware implementations (Verilog/SystemVerilog references, ASIC synthesis numbers)
-- Theoretical results about the topology-preservation property
+- Theoretical results sharpening `paper/topology_notes.md` — in particular, sufficient conditions on stimulus streams for a two-sided H₁-ratio bound under iterated composition
 - Connections to existing algebraic-structure literature this construction may be related to
 
 ## License
