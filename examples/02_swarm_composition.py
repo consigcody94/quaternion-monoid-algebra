@@ -9,12 +9,14 @@ a tree-reduce in parallel. It is NOT commutative on the quaternion factor,
 so the order of agents matters in general.
 """
 
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import os
+import sys
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 import numpy as np
 from functools import reduce
-from src.algebra import Packet, packet_product, identity_packet
+from quaternion_monoid_algebra import Packet, packet_product, identity_packet
 
 
 def compose_swarm(n_agents: int = 50, seed: int = 0):
@@ -41,7 +43,7 @@ def tree_reduce_compose(agents):
 if __name__ == "__main__":
     agents, left_fold = compose_swarm(n_agents=50, seed=0)
     tree = tree_reduce_compose(agents)
-    print(f"Composed 50-agent swarm via left-fold and tree-reduce.")
+    print("Composed 50-agent swarm via left-fold and tree-reduce.")
     print(f"Left-fold result:  {left_fold}")
     print(f"Tree-reduce result: {tree}")
     print(f"Identical? {left_fold == tree}")

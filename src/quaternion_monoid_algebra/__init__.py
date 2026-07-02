@@ -6,8 +6,16 @@ from .algebra import (
     packet_product,
     identity_packet,
     packet_power,
+    compose,
     hamilton_product,
     normalize_quaternion,
+    make_xor_table,
+    validate_monoid_table,
+)
+from .batch import (
+    PacketArray,
+    packet_product_batch,
+    reduce_packets,
 )
 
 __all__ = [
@@ -15,7 +23,13 @@ __all__ = [
     "packet_product",
     "identity_packet",
     "packet_power",
+    "compose",
     "hamilton_product",
     "normalize_quaternion",
+    "make_xor_table",
+    "validate_monoid_table",
+    "PacketArray",
+    "packet_product_batch",
+    "reduce_packets",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

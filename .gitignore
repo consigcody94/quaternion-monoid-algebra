@@ -10,3 +10,6 @@ Thumbs.db
 
 # Downloaded datasets (stress_tests.py fetches these at runtime)
 data_cache/
+*.egg-info/
+build/
+dist/

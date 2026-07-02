@@ -9,11 +9,13 @@ Tampering with any packet anywhere in the chain produces a different head
 the XOR / mod / multiply sub-field operations on the symbolic factors).
 """
 
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import os
+import sys
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 import numpy as np
-from src.algebra import Packet, packet_product, identity_packet
+from quaternion_monoid_algebra import Packet, packet_product, identity_packet
 
 
 def produce_chain(n: int, seed: int = 0):
@@ -45,7 +47,7 @@ if __name__ == "__main__":
 
     # Tamper somewhere in the middle
     tampered = tamper(packets, index=42)
-    print(f"After tampering with packet 42 of 100,")
+    print("After tampering with packet 42 of 100,")
     print(f"  verifier recomputes head and compares: matches? {verify_chain(tampered, head)}")
     print()
     print("Note: this provides algebraic consistency. For full tamper-evidence")

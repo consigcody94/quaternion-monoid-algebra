@@ -18,9 +18,10 @@ abstract: >-
   making the packet space a monoid, with an additional empirically-observed
   topology-preservation property under iterated composition. Includes CPU
   and GPU reference implementations with bit-exact correspondence, a
-  fourteen-test validation suite, and three application examples (agent
-  state evolution, multi-source state composition, algebraic chain
-  verification).
+  vectorized batch API with tree reduction, a layered validation suite
+  (property-based tests via Hypothesis, an eight-test property runner, and
+  six stress tests), and three application examples (agent state evolution,
+  multi-source state composition, algebraic chain verification).
 keywords:
   - quaternion
   - monoid
@@ -29,5 +30,5 @@ keywords:
   - state evolution
   - audit chain
 license: MIT
-version: 0.1.0
-date-released: '2026-05-18'
+version: 0.2.0
+date-released: '2026-07-01'

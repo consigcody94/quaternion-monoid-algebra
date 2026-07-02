@@ -130,15 +130,15 @@ TOTAL: 8 of 8 tests pass.
 
 ## 4. Reference implementation performance
 
-A reference Python implementation (`src/algebra.py`) and a CuPy-batched GPU implementation (`src/gpu.py`) are provided. Measured throughput on consumer hardware:
+A reference Python implementation (`src/quaternion_monoid_algebra/algebra.py`, with a vectorized batch API in `batch.py`) and a CuPy-batched GPU implementation (`src/quaternion_monoid_algebra/gpu.py`) are provided. Measured throughput on consumer hardware:
 
 | Implementation | Hardware | Throughput |
 |---|---|---|
 | Pure Python | one CPU thread | ~40,000 packet products / sec |
-| NumPy vectorized | one CPU thread | ~950,000 packet products / sec |
+| NumPy vectorized (`batch.py`) | one CPU thread | ~3,600,000 packet products / sec |
 | CuPy batched | NVIDIA RTX 5070 (Blackwell, CC 12.0) | ~75,000,000 packet products / sec |
 
-The GPU implementation is bit-exact to the CPU reference on the Hamilton multiply: `max(|GPU - CPU|) = 0.00e+00` across 100,000 random pairs at FP32 precision. This is by design. Production deployments that require CPU-GPU agreement for cryptographic-audit purposes can run on either side and get the same result.
+The CPU rows are reproducible with `python benchmarks/bench.py` (Ryzen 5700G measurements). The GPU implementation is bit-exact to the CPU reference on the Hamilton multiply: `max(|GPU - CPU|) = 0.00e+00` across 100,000 random pairs at FP32 precision. This is by design. Production deployments that require CPU-GPU agreement for cryptographic-audit purposes can run on either side and get the same result.
 
 ## 5. Application classes
 
@@ -185,7 +185,7 @@ The packet product can be implemented as eight parallel combinational sub-paths 
 
 A reference target on Xilinx Zynq UltraScale+ XC7Z020 at 100 MHz fits in ~250 LUTs plus 1 DSP48 plus 2 small block ROMs. A 28 nm ASIC reference projects ~3,500 standard cells, 1.5 GHz clock, ~50 fJ per operation. These numbers are projections from the cell-library characterization, not measured silicon.
 
-Hardware implementation files are not included in this open-source release. The algebraic specification is sufficient to implement; verification against `src/algebra.py` provides the bit-exact reference.
+Hardware implementation files are not included in this open-source release. The algebraic specification is sufficient to implement; verification against `src/quaternion_monoid_algebra/algebra.py` provides the bit-exact reference.
 
 ## 7. Relationship to prior work
 

@@ -23,15 +23,15 @@ if hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True)
 
-# Make src/ importable when running from the repo root
+# Make the package importable from the repo checkout without installation
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from src.algebra import (
+from quaternion_monoid_algebra.algebra import (
     Packet, packet_product, identity_packet, packet_power,
-    hamilton_product, normalize_quaternion,
+    normalize_quaternion,
 )
-from src.gpu import HAS_GPU
+from quaternion_monoid_algebra.gpu import HAS_GPU
 
 
 # --- helpers -----------------------------------------------------------------
@@ -145,7 +145,9 @@ def test_gpu_bit_exact(r: Result, rng):
         r.record(None, "GPU Hamilton matches CPU bit-for-bit", "(CuPy not available)")
         return
     import cupy as cp
-    from src.gpu import hamilton_product_batch_gpu, hamilton_product_batch_cpu
+    from quaternion_monoid_algebra.gpu import (
+        hamilton_product_batch_gpu, hamilton_product_batch_cpu,
+    )
 
     N = 100_000
     q1 = rng.standard_normal((N, 4)).astype(np.float32)

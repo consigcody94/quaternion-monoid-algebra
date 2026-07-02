@@ -9,14 +9,22 @@ The construction is parameterized by the choice of symbolic-field combination
 rules. Defaults below produce a closed associative binary operation with
 two-sided identity, making the packet space a monoid.
 
+A note on floating point: associativity of the quaternion sub-operation holds
+exactly over the reals; in IEEE 754 arithmetic it holds up to rounding, which
+is why ``Packet.__eq__`` compares with a small tolerance: absolute (1e-9) on
+the quaternion, whose components are unit-bounded, and relative (1e-9) on the
+scale, which is unbounded under multiplication. The symbolic sub-fields are
+integer-exact.
+
 References to "SHD-CCP" or any specific 64-bit field layout do not appear here.
 This is the general construction. Concrete deployments choose specific bit
 widths and sub-field counts.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
+from functools import reduce
+from typing import Iterable, Optional
 import numpy as np
 
 
@@ -25,14 +33,30 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 def normalize_quaternion(q: np.ndarray) -> np.ndarray:
-    """Return q / ||q||. Accepts shape (4,) or (N, 4)."""
+    """Return q / ||q||. Accepts shape (4,) or (N, 4).
+
+    The input is pre-scaled by its largest-magnitude component before the
+    norm is computed, so normalization is correct even where a naive
+    sum-of-squares would overflow (components above ~1e154) or underflow to
+    zero (components below ~1e-162).
+
+    Zero rows are returned unchanged (there is no meaningful direction to
+    normalize to). ``Packet`` rejects zero quaternions at construction, so
+    inside the algebra this branch is never taken.
+    """
     q = np.asarray(q, dtype=np.float64)
     if q.ndim == 1:
-        n = np.linalg.norm(q)
-        return q / n if n > 0 else q
-    n = np.linalg.norm(q, axis=-1, keepdims=True)
+        m = np.max(np.abs(q))
+        if m == 0 or not np.isfinite(m):
+            return q
+        qs = q / m                       # components in [-1, 1], norm in [1, 2]
+        return qs / np.linalg.norm(qs)
+    m = np.max(np.abs(q), axis=-1, keepdims=True)
+    safe = np.where((m > 0) & np.isfinite(m), m, 1.0)
+    qs = q / safe
+    n = np.linalg.norm(qs, axis=-1, keepdims=True)
     n = np.where(n > 0, n, 1.0)
-    return q / n
+    return qs / n
 
 
 def hamilton_product(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
@@ -66,12 +90,45 @@ def hamilton_product(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
 def make_xor_table(n_bits: int) -> np.ndarray:
     """Build a Cayley table T[i, j] = i XOR j over {0,...,2^n - 1}.
     XOR over Z_2^n is associative, commutative, and has 0 as identity."""
-    size = 1 << n_bits
-    t = np.zeros((size, size), dtype=np.int64)
-    for i in range(size):
-        for j in range(size):
-            t[i, j] = i ^ j
-    return t
+    idx = np.arange(1 << n_bits, dtype=np.int64)
+    return np.bitwise_xor.outer(idx, idx)
+
+
+def validate_monoid_table(table: np.ndarray, identity: int = 0) -> None:
+    """Check that a Cayley table defines a monoid on {0, ..., size-1}.
+
+    Verifies closure (all entries in range), the two identity laws for the
+    given identity element, and full associativity
+    T[T[i,j],k] == T[i,T[j,k]] over every triple. Raises ValueError with a
+    counterexample on the first violated law. Cost is O(size^3) memory and
+    time, fine for the small sub-field tables this library uses.
+
+    Use this to vet a custom ``form_table``/``spin_table`` before passing it
+    to :func:`packet_product`, which does not re-validate on every call.
+    """
+    t = np.asarray(table)
+    if t.ndim != 2 or t.shape[0] != t.shape[1]:
+        raise ValueError(f"table must be square, got shape {t.shape}")
+    size = t.shape[0]
+    if not (0 <= identity < size):
+        raise ValueError(f"identity {identity} out of range for size {size}")
+    if t.min() < 0 or t.max() >= size:
+        raise ValueError("table is not closed: entries outside [0, size)")
+    idx = np.arange(size)
+    if not np.array_equal(t[identity, :], idx):
+        j = int(np.argmax(t[identity, :] != idx))
+        raise ValueError(f"left identity fails: T[{identity},{j}] = {t[identity, j]} != {j}")
+    if not np.array_equal(t[:, identity], idx):
+        i = int(np.argmax(t[:, identity] != idx))
+        raise ValueError(f"right identity fails: T[{i},{identity}] = {t[i, identity]} != {i}")
+    # (i*j)*k vs i*(j*k) for all triples, fully vectorized:
+    lhs = t[t, :]           # lhs[i, j, k] = T[T[i,j], k]
+    rhs = t[:, t]           # rhs[i, j, k] = T[i, T[j,k]]
+    if not np.array_equal(lhs, rhs):
+        i, j, k = np.unravel_index(int(np.argmax(lhs != rhs)), lhs.shape)
+        raise ValueError(
+            f"associativity fails at ({i},{j},{k}): "
+            f"T[T[{i},{j}],{k}] = {lhs[i, j, k]} but T[{i},T[{j},{k}]] = {rhs[i, j, k]}")
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +153,12 @@ class Packet:
 
     Fields are deliberately generic. A concrete deployment may bit-pack these
     into a specific layout; the algebra is defined on the unpacked values.
+
+    Construction validates the packet: the quaternion must be finite and
+    nonzero (it is renormalized to unit length), the symbolic fields are
+    masked into their declared bit widths, and the scale must be a finite
+    positive number. Rejecting degenerate inputs at the boundary is what
+    makes the closure property hold unconditionally inside the algebra.
     """
     quaternion: np.ndarray              # shape (4,), unit norm
     field_a: int = 0                    # 4-bit, default XOR lookup
@@ -106,13 +169,23 @@ class Packet:
     scale: float = 1.0                  # positive float, multiplicative
 
     def __post_init__(self):
-        self.quaternion = normalize_quaternion(np.asarray(self.quaternion, dtype=np.float64))
+        q = np.asarray(self.quaternion, dtype=np.float64)
+        if q.shape != (4,):
+            raise ValueError(f"quaternion must have shape (4,), got {q.shape}")
+        if not np.all(np.isfinite(q)):
+            raise ValueError(f"quaternion has non-finite components: {q.tolist()}")
+        if np.max(np.abs(q)) == 0.0:
+            raise ValueError("quaternion must be nonzero (zero has no direction to normalize)")
+        self.quaternion = normalize_quaternion(q)
         self.field_a = int(self.field_a) & 0xF
         self.field_b = int(self.field_b) & 0x7
         self.field_c = int(self.field_c) & 0x1F
         self.field_d = int(self.field_d) & 0x7
         self.parity = int(self.parity) & 0x1
-        self.scale = float(self.scale)
+        scale = float(self.scale)
+        if not np.isfinite(scale) or scale <= 0.0:
+            raise ValueError(f"scale must be a finite positive number, got {scale}")
+        self.scale = scale
 
     @staticmethod
     def random(rng: Optional[np.random.Generator] = None) -> "Packet":
@@ -131,16 +204,19 @@ class Packet:
         )
 
     def __eq__(self, other: object) -> bool:
+        """Tolerant equality: quaternion within absolute 1e-9 per component
+        (components are unit-bounded), scale within relative 1e-9 (scale is
+        unbounded under multiplicative composition), symbolic fields exact."""
         if not isinstance(other, Packet):
             return NotImplemented
         return (
-            np.allclose(self.quaternion, other.quaternion, atol=1e-9)
+            np.allclose(self.quaternion, other.quaternion, rtol=0.0, atol=1e-9)
             and self.field_a == other.field_a
             and self.field_b == other.field_b
             and self.field_c == other.field_c
             and self.field_d == other.field_d
             and self.parity == other.parity
-            and np.isclose(self.scale, other.scale, atol=1e-9)
+            and np.isclose(self.scale, other.scale, rtol=1e-9, atol=0.0)
         )
 
     def __repr__(self) -> str:
@@ -175,6 +251,9 @@ def packet_product(p1: Packet, p2: Packet,
     Each per-field operation is associative with an identity element. Therefore
     the field-wise composition is associative with the identity_packet() as
     the two-sided identity.
+
+    Custom tables are not re-validated here (this is the hot path); check
+    them once with :func:`validate_monoid_table` before use.
     """
     if form_table is None:
         form_table = _FORM_TABLE
@@ -196,11 +275,29 @@ def packet_product(p1: Packet, p2: Packet,
     )
 
 
+def compose(packets: Iterable[Packet]) -> Packet:
+    """Left-fold a sequence of packets from the identity:
+    I ⊗ p_1 ⊗ p_2 ⊗ ... ⊗ p_n. Returns identity_packet() for an empty input."""
+    return reduce(packet_product, packets, identity_packet())
+
+
 def packet_power(p: Packet, n: int) -> Packet:
-    """Compute p ⊗ p ⊗ ... ⊗ p, n times. p^0 = identity_packet()."""
+    """Compute p ⊗ p ⊗ ... ⊗ p, n times, in O(log n) products. p^0 = identity.
+
+    Uses exponentiation by squaring, which is valid precisely because ⊗ is
+    associative. The symbolic sub-fields are integer-exact under any
+    association; the quaternion component may differ from the sequential
+    fold by floating-point rounding on the order of machine epsilon, which
+    is within the tolerance ``Packet.__eq__`` compares at.
+    """
     if n < 0:
         raise ValueError("packet_power requires n >= 0")
-    out = identity_packet()
-    for _ in range(n):
-        out = packet_product(out, p)
-    return out
+    result = identity_packet()
+    base = p
+    while n > 0:
+        if n & 1:
+            result = packet_product(result, base)
+        n >>= 1
+        if n:
+            base = packet_product(base, base)
+    return result

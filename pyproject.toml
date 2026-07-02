@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quaternion-monoid-algebra"
+version = "0.2.0"
+description = "Compositional algebra over fixed-width quaternionic-symbolic state packets: a closed associative binary operation with two-sided identity, on CPU and GPU."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Cody Churchwell" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.22"]
+keywords = ["quaternion", "monoid", "compositional algebra", "state evolution", "audit chain"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7", "hypothesis>=6"]
+topology = ["gudhi", "scipy"]
+gpu = ["cupy-cuda12x"]
+dev = ["pytest>=7", "hypothesis>=6", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/consigcody94/quaternion-monoid-algebra"
+Issues = "https://github.com/consigcody94/quaternion-monoid-algebra/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "NPY"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Runner scripts insert the src/ path before importing the package (E402),
+# and `I` is the mathematically conventional name for the identity (E741).
+"tests/**" = ["E402", "E741"]
+"examples/**" = ["E402"]
+"benchmarks/**" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

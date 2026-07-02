@@ -15,14 +15,20 @@ the README and paper claim about real behavior:
 Run from repo root:  python tests/stress_tests.py
 """
 
-import os, sys, io, hashlib, urllib.request, time
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import os
+import sys
+import io
+import hashlib
+import urllib.request
+import time
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 if hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True)
 
 import numpy as np
-from src.algebra import (
+from quaternion_monoid_algebra.algebra import (
     Packet, packet_product, identity_packet, normalize_quaternion,
 )
 
@@ -44,7 +50,7 @@ def test_long_horizon_stability():
     state = identity_packet()
     norms = []
     scales = []
-    for step in range(10_000):
+    for _ in range(10_000):
         stim = Packet.random(rng)
         state = packet_product(state, stim)
         norms.append(float(np.linalg.norm(state.quaternion)))
@@ -62,7 +68,7 @@ def test_long_horizon_stability():
     ok_finite = bool(np.all(np.isfinite(scales)) and np.all(scales > 0))
     ok_norm = norm_err < 1e-6
 
-    print(f"  steps:                 10,000")
+    print("  steps:                 10,000")
     print(f"  final quaternion norm: {norms[-1]:.10f}")
     print(f"  max |norm - 1.0|:      {norm_err:.2e}")
     print(f"  final scale:           {scales[-1]:.6e}")
@@ -138,7 +144,7 @@ def test_distinguishability():
         if not any(h == s for s in seen):
             n_unique_full += 1
             seen.append(h)
-    print(f"  chains generated: 100")
+    print("  chains generated: 100")
     print(f"  distinct quaternion components: {n_unique_quaternions}")
     print(f"  distinct full packets:          {n_unique_full}")
     ok = n_unique_full == 100
@@ -233,7 +239,7 @@ def test_field_saturation():
     final_a_values = []
     final_c_values = []
 
-    for trial in range(n_trials):
+    for _ in range(n_trials):
         state = identity_packet()
         for _ in range(n_steps):
             state = packet_product(state, Packet.random(rng))
@@ -251,21 +257,21 @@ def test_field_saturation():
 
     print(f"  trials: {n_trials} chains of {n_steps} steps each")
     print()
-    print(f"  field_b (3-bit, max() rule):")
+    print("  field_b (3-bit, max() rule):")
     print(f"    final values saturated at 7: {n_saturated_b} / {n_trials}")
-    print(f"    -> This is honest behavior: max() is associative with identity 0")
-    print(f"       but saturates under iteration. The README/paper describe this.")
-    print(f"       Use case implication: field_b is a one-way 'has the chain seen")
-    print(f"       a high-amplitude packet yet' flag, not a state register.")
+    print("    -> This is honest behavior: max() is associative with identity 0")
+    print("       but saturates under iteration. The README/paper describe this.")
+    print("       Use case implication: field_b is a one-way 'has the chain seen")
+    print("       a high-amplitude packet yet' flag, not a state register.")
     print()
-    print(f"  field_a (4-bit, XOR rule):")
+    print("  field_a (4-bit, XOR rule):")
     print(f"    distinct values across trials: {len(a_dist)} (out of 16 possible)")
     print(f"    distribution: {dict(sorted(a_dist.items()))}")
-    print(f"    -> XOR is information-preserving; distribution should approach uniform")
+    print("    -> XOR is information-preserving; distribution should approach uniform")
     print()
-    print(f"  field_c (5-bit, mod-32 add):")
+    print("  field_c (5-bit, mod-32 add):")
     print(f"    distinct values across trials: {len(c_dist)} (out of 32 possible)")
-    print(f"    -> mod-N addition is information-preserving over Z/NZ")
+    print("    -> mod-N addition is information-preserving over Z/NZ")
     print()
     # Pass: field_b saturates (expected), field_a and field_c spread
     ok_b = n_saturated_b >= n_trials * 0.9         # mostly saturated, as expected
@@ -297,17 +303,17 @@ def test_scale_stability():
     finals = np.array(finals)
     print(f"  chains: {n_chains}, steps each: {n_steps}")
     print(f"  log10(scale) median:       {np.median(np.log10(finals)):.2f}")
-    print(f"  log10(scale) percentiles:")
+    print("  log10(scale) percentiles:")
     print(f"    p01 = {np.percentile(np.log10(finals), 1):.2f}")
     print(f"    p50 = {np.percentile(np.log10(finals), 50):.2f}")
     print(f"    p99 = {np.percentile(np.log10(finals), 99):.2f}")
     print(f"  all finite?                {bool(np.all(np.isfinite(finals)))}")
     print(f"  all positive?              {bool(np.all(finals > 0))}")
     print()
-    print(f"  Note: under Packet.random(), each scale draw is exp(N(0, 0.1)).")
-    print(f"        Product over 1000 draws is exp(N(0, sqrt(1000)*0.1)) ~ exp(N(0, 3.16)).")
-    print(f"        So 99% of finals lie within ~3 orders of magnitude of 1.0,")
-    print(f"        consistent with theory. No overflow / underflow / NaN.")
+    print("  Note: under Packet.random(), each scale draw is exp(N(0, 0.1)).")
+    print("        Product over 1000 draws is exp(N(0, sqrt(1000)*0.1)) ~ exp(N(0, 3.16)).")
+    print("        So 99% of finals lie within ~3 orders of magnitude of 1.0,")
+    print("        consistent with theory. No overflow / underflow / NaN.")
     ok = np.all(np.isfinite(finals)) and np.all(finals > 0)
     print(f"  [{'PASS' if ok else 'FAIL'}] scale stays in finite positive range")
     return ok
@@ -331,7 +337,8 @@ def main():
     print("STRESS TEST SUMMARY")
     print("=" * 72)
     def kind(ok):
-        if ok is None: return "skip"
+        if ok is None:
+            return "skip"
         return "pass" if bool(ok) else "fail"
     passed = sum(1 for _, ok in results if kind(ok) == "pass")
     failed = sum(1 for _, ok in results if kind(ok) == "fail")

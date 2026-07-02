@@ -36,7 +36,23 @@ Three application classes the construction supports natively:
 
 ## Status
 
-Reference implementation in Python (`src/`). Eight validation tests in `tests/` covering identity, associativity, closure, stability under iteration, GPU/CPU bit-exact correspondence, and topology preservation. White paper in `paper/`. Use cases discussed in `examples/`.
+Installable Python package (`src/quaternion_monoid_algebra/`) with a scalar API, a vectorized batch API, and a CuPy GPU port. Three layers of validation in `tests/`: a pytest + Hypothesis property suite, the original 8-test property runner, and 6 stress tests (including real-data behavior on a public TUM RGB-D sequence). White paper in `paper/`. Use cases discussed in `examples/`.
+
+## Install
+
+```bash
+pip install git+https://github.com/consigcody94/quaternion-monoid-algebra
+```
+
+or, for development:
+
+```bash
+git clone https://github.com/consigcody94/quaternion-monoid-algebra
+cd quaternion-monoid-algebra
+pip install -e .[test]
+pip install gudhi            # optional: enables the topology-preservation test
+pip install cupy-cuda12x     # optional: enables the GPU tests
+```
 
 ## Validation summary
 
@@ -48,22 +64,25 @@ Reference implementation in Python (`src/`). Eight validation tests in `tests/` 
 [GPU bit-exact]           max GPU vs CPU diff on Hamilton product = 0.00e+00
 [Topology preservation]   H₁ persistence ratio in target band [0.3, 5.0]
 
-TOTAL: 8 of 8 tests pass
+TOTAL: 8 of 8 property tests pass, plus 6 of 6 stress tests
+       and a 49-test pytest + Hypothesis suite
 ```
 
 Reproduce with:
 
 ```bash
-python -m venv venv && source venv/bin/activate    # or venv\Scripts\activate on Windows
-pip install numpy scipy gudhi persim
-pip install cupy-cuda12x nvidia-cuda-nvrtc-cu12     # for GPU tests; optional
-python tests/run_all.py
+pytest                          # property-based suite (Hypothesis-driven)
+python tests/run_all.py         # the 8-test property runner above
+python tests/stress_tests.py    # stress tests (downloads TUM data, SHA-256 verified)
+python benchmarks/bench.py      # throughput benchmarks
 ```
+
+A note on floating point: the symbolic sub-fields are integer-exact under any association. The quaternion sub-operation is associative exactly over the reals and up to rounding (~1e-16) in IEEE 754 arithmetic; packet equality compares the quaternion at absolute 1e-9 per component and the scale at relative 1e-9.
 
 ## Quick start
 
 ```python
-from src.algebra import packet_product, identity_packet, Packet
+from quaternion_monoid_algebra import packet_product, identity_packet, Packet
 import numpy as np
 
 p1 = Packet.random()
@@ -83,6 +102,30 @@ state = identity_packet()
 for stim in stimulus_stream:
     state = packet_product(state, stim)
 ```
+
+## Batch API
+
+For throughput, hold N packets as a struct-of-arrays and compose them with vectorized NumPy kernels. Chain reduction runs as an O(log N)-depth pairwise tree, which is legal because ⊗ is associative:
+
+```python
+from quaternion_monoid_algebra import PacketArray, packet_product_batch, reduce_packets
+
+pa = PacketArray.random(1_000_000)
+pb = PacketArray.random(1_000_000)
+
+pc = packet_product_batch(pa, pb)   # 1M elementwise compositions
+head = reduce_packets(pa)           # chain head p₀ ⊗ p₁ ⊗ ... ⊗ pₙ₋₁, tree-reduced
+```
+
+Measured on a Ryzen 5700G (see `benchmarks/bench.py` to reproduce on your machine):
+
+| tier | throughput |
+|---|---|
+| scalar `packet_product` (pure Python) | ~40 k ops/sec |
+| batch `packet_product_batch` (NumPy) | ~3.6 M ops/sec |
+| tree-reduce chain head (NumPy) | ~2.2 M packets/sec |
+
+Custom sub-field operations can be swapped in via lookup tables; check a candidate table once with `validate_monoid_table(table)` (it verifies closure, the identity laws, and full associativity, with a counterexample on failure) before passing it to `packet_product`.
 
 ## Paper
 

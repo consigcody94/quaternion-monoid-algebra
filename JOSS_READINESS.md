@@ -18,8 +18,9 @@ JOSS requires software that demonstrates **iterative public development over tim
 | Public repository, browsable without registration | DONE |
 | `paper.md` in JOSS format | DONE (`paper/paper.md`) |
 | `paper.bib` with references | DONE (`paper/paper.bib`) |
-| Automated tests | DONE (14 tests: `tests/run_all.py` + `tests/stress_tests.py`) |
-| Continuous integration | DONE (`.github/workflows/ci.yml`) |
+| Automated tests | DONE (pytest + Hypothesis suite, plus `tests/run_all.py` + `tests/stress_tests.py`) |
+| Continuous integration | DONE (`.github/workflows/ci.yml`: lint + test matrix) |
+| Installable package (`pip install`) | DONE (v0.2.0: `pyproject.toml`, `quaternion_monoid_algebra` package) |
 | Documentation: installation | DONE (README) |
 | Documentation: example usage | DONE (README quick-start + `examples/`) |
 | Documentation: API / functionality | DONE (README + paper) |
@@ -33,6 +34,7 @@ JOSS requires software that demonstrates **iterative public development over tim
 
 To convert this from "staged" to "submittable," accumulate genuine development history by working the roadmap in the paper's "Open questions" section:
 
+- ~~Package the library for installation and add a property-based (Hypothesis) test suite~~ — done in v0.2.0 (2026-07-01), along with the vectorized batch API and input validation
 - Add a formal proof (or partial characterization) of the topology-preservation property
 - Add alternative sub-field constructions and document the trade-offs
 - Add real-world dataset validation beyond TUM (EuRoC MAV, JIGSAWS, IMU recordings)
