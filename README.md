@@ -13,6 +13,14 @@ The result is that a packet space which would otherwise be a passive data contai
 
 ## Interactive 3D Digital Twin & Vector Engineering Blueprints
 
+### Physical Explainer: The Hamilton Monoid Resolving Bench
+An interactive isometric precision instrument built with [wheresryan22/anatomy](https://github.com/wheresryan22/anatomy) embodying state packet composition:
+
+> **[Launch Interactive Physical Explainer](https://consigcody94.github.io/scientific-anatomy/figures/quaternion-monoid/quaternion-monoid.html)** · *(Local: [`docs/figures/quaternion-monoid.html`](docs/figures/quaternion-monoid.html))*
+
+[![Hamilton Monoid Resolving Bench](docs/figures/quaternion-monoid-dark.png)](https://consigcody94.github.io/scientific-anatomy/figures/quaternion-monoid/quaternion-monoid.html)
+*Figure: The Hamilton Monoid Resolving Bench. Twin dovetail carriages carrying rotary brass gimbal rings (state packets $P_A$ and $P_B$) slide into a central Hamilton product indexing barrel. The dial gauge tracks the resolving cam to verify unit norm closure $|q| = 1.0000$ and bit-exact CPU/GPU execution.*
+
 > **[Launch Interactive 3D WebGL Digital Twin (Hopf Fibration & State Space)](3d_hopf_model.html)**
 > *(Interactive Three.js digital twin featuring stereographic Hopf fibration nested Villarceau tori, real-time quaternion vector conjugation, 256-bit SIMD packet memory layout, H1 persistent homology barcodes, and associative left-fold verification DAGs).*
 
